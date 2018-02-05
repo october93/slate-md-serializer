@@ -8,6 +8,16 @@ const String = new Record({
   text: ""
 });
 
+function formatLinkBar(img, url, title, desc, domain) {
+  return `%%%
+${img ? `${img}\n${url}` : url}
+${title}
+${desc}
+${domain}
+%%%
+`;
+}
+
 /**
  * Rules to (de)serialize nodes.
  *
@@ -110,6 +120,14 @@ const RULES = [
           const alt = obj.getIn(["data", "alt"]);
           const src = encode(obj.getIn(["data", "src"]) || "");
           return `![${alt}](${src})\n`;
+        case "linkbar":
+          const img = encode(obj.getIn(["data", "image"]) || "");
+          const url = encode(obj.getIn(["data", "url"]) || "");
+          const title = obj.getIn(["data", "title"]);
+          const desc = obj.getIn(["data", "description"]);
+          const domain = obj.getIn(["data", "domain"]);
+
+          return formatLinkBar(img, url, title, desc, domain);
       }
     }
   },
