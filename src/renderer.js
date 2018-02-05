@@ -10,7 +10,7 @@ const String = new Record({
 
 function formatLinkBar(img, url, title, desc, domain) {
   return `%%%
-${img ? `${img}\n${url}` : url}
+${img ? `${url}\n${img}` : url}
 ${title}
 ${desc}
 ${domain}
