@@ -84,7 +84,7 @@ const RULES = [
         case "bulleted-list":
         case "ordered-list":
           if (parent === document) {
-            return children;
+            return `\n${children}`;
           }
           return `\n${children.replace(/^/gm, "   ")}`;
         case "list-item": {
