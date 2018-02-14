@@ -18,6 +18,10 @@ ${domain}
 `;
 }
 
+function formatListItem(children) {
+  return children.replace(/\n/g, "%n");
+}
+
 /**
  * Rules to (de)serialize nodes.
  *
@@ -90,14 +94,14 @@ const RULES = [
         case "list-item": {
           switch (parent.type) {
             case "ordered-list":
-              return `1. ${children}\n`;
+              return `1. ${formatListItem(children)}\n`;
             case "todo-list":
               let checked = obj.getIn(["data", "checked"]);
               let box = checked ? "[x]" : "[ ]";
-              return `${box} ${children}\n`;
+              return `${box} ${formatListItem(children)}\n`;
             default:
             case "bulleted-list":
-              return `* ${children}\n`;
+              return `* ${formatListItem(children)}\n`;
           }
         }
         case "heading1":
