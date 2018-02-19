@@ -80,8 +80,6 @@ const RULES = [
           }
         case "code":
           return `\`\`\`\n${children}\n\`\`\`\n`;
-        case "code-line":
-          return `${children}\n`;
         case "block-quote":
           return `> ${children}\n`;
         case "todo-list":
@@ -142,6 +140,8 @@ const RULES = [
         case "link":
           const href = encode(obj.getIn(["data", "href"]) || "");
           return `[${children.trim()}](${href})`;
+        case "code-line":
+          return `${children}\n`;
       }
     }
   },
