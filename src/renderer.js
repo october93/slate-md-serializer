@@ -141,7 +141,7 @@ const RULES = [
           const href = encode(obj.getIn(["data", "href"]) || "");
           return `[${children.trim()}](${href})`;
         case "code-line":
-          return `${children}\n`;
+          return `\`${children}\``;
       }
     }
   },
