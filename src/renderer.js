@@ -18,7 +18,7 @@ ${domain}
 `;
 }
 
-function formatListItem(children) {
+function formatSoftBreak(children) {
   return children.replace(/\n/g, "%n");
 }
 
@@ -92,18 +92,18 @@ const RULES = [
         case "list-item": {
           switch (parent.type) {
             case "ordered-list":
-              return `1. ${formatListItem(children)}\n`;
+              return `1. ${formatSoftBreak(children)}\n`;
             case "todo-list":
               let checked = obj.getIn(["data", "checked"]);
               let box = checked ? "[x]" : "[ ]";
-              return `${box} ${formatListItem(children)}\n`;
+              return `${box} ${formatSoftBreak(children)}\n`;
             default:
             case "bulleted-list":
-              return `* ${formatListItem(children)}\n`;
+              return `* ${formatSoftBreak(children)}\n`;
           }
         }
         case "heading1":
-          return `# ${children}`;
+          return `# ${formatSoftBreak(children)}`;
         case "heading2":
           return `## ${children}`;
         case "heading3":
