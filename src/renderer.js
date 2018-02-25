@@ -12,7 +12,7 @@ function formatLinkBar(img, url, title, desc, domain) {
   return `%%%
 ${img ? `${url}\n${img}` : url}
 ${title}
-${desc}
+${desc.replace(/\[(.*?)\]/g, "")}
 ${domain}
 %%%
 `;
