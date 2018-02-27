@@ -34,7 +34,7 @@ const RULES = [
   {
     serialize(obj, children) {
       if (obj.kind === "string") {
-        return `${children}`.replace("@", "\\@").replace("!", "\\!");
+        return `${children}`.replace(/@/g, "\\@").replace(/!/g, "\\!");
       }
     }
   },
