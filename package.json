@@ -1,6 +1,6 @@
 {
   "name": "@october/slate-md-serializer",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "",
   "main": "lib/renderer.js",
   "scripts": {
