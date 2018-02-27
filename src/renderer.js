@@ -34,7 +34,7 @@ const RULES = [
   {
     serialize(obj, children) {
       if (obj.kind === "string") {
-        return `${children}`.replace("@", "\\@");
+        return `${children}`.replace("@", "\\@").replace("!", "\\!");
       }
     }
   },
@@ -143,8 +143,9 @@ const RULES = [
         case "code-line":
           return `\`${children}\``;
         case "mention":
-          const username = encode(obj.getIn(["data", "username"]) || "");
-          return username && `@${username}`;
+          const username = obj.getIn(["data", "username"]) || "";
+          const anon = obj.getIn(["data", "anonymous"]) || "";
+          return username && `${anon ? "!" : "@"}${username}`;
       }
     }
   },
