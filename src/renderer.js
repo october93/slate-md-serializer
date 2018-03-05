@@ -9,11 +9,10 @@ const String = new Record({
 });
 
 function formatLinkBar(img, url, title, desc, domain) {
+  const description = desc.replace(/\[(.*?)\]/g, "")
   return `%%%
 ${img ? `${url}\n${img}` : url}
-${title}
-${desc.replace(/\[(.*?)\]/g, "")}
-${domain}
+${title ? `${title}\n` : ""}${description ? `${description}\n` : ""}${domain}
 %%%
 `;
 }
