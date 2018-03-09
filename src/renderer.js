@@ -9,10 +9,11 @@ const String = new Record({
 });
 
 function formatLinkBar(img, url, title, desc, domain) {
-  const description = desc.replace(/\[(.*?)\]/g, "")
   return `%%%
 ${img ? `${url}\n${img}` : url}
-${title ? `${title}\n` : ""}${description ? `${description}\n` : ""}${domain}
+${title}
+${desc.replace(/\[(.*?)\]/g, "")}
+${domain}
 %%%
 `;
 }
@@ -22,7 +23,7 @@ function formatSoftBreak(children) {
 }
 
 /**
- * Rules to (de)serialize nodes.
+ * Rules to (de)serialize nodes.git pu
  *
  * @type {Object}
  */
@@ -33,7 +34,11 @@ const RULES = [
   {
     serialize(obj, children) {
       if (obj.kind === "string") {
-        return `${children}`.replace(/@/g, "\\@").replace(/!/g, "\\!");
+        return `${children}`
+          .replace(/@/g, "\\@")
+          .replace(/!/g, "\\!")
+          .replace(/\[/g, "\\[")
+          .replace(/\]/g, "\\]");
       }
     }
   },
