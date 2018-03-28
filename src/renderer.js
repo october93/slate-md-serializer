@@ -78,9 +78,9 @@ const RULES = [
           return `| ${children} `;
         case "paragraph":
           if (parent.type === "list-item") {
-            return children;
+            return formatSoftBreak(children);
           } else {
-            return `\n${children}\n`;
+            return `\n${formatSoftBreak(children)}\n`;
           }
         case "code":
           return `\`\`\`\n${children}\n\`\`\`\n`;
