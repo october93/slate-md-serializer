@@ -19,7 +19,7 @@ ${domain}
 }
 
 function formatSoftBreak(children) {
-  return children.replace(/\n/g, "%n");
+  return children.replace(/\n/g, "  \n");
 }
 
 /**
