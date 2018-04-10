@@ -35,10 +35,12 @@ const RULES = [
     serialize(obj, children) {
       if (obj.kind === "string") {
         return `${children}`
+          .replace(/\\/g, "\\\\")
           .replace(/@/g, "\\@")
           .replace(/!/g, "\\!")
           .replace(/\[/g, "\\[")
-          .replace(/\]/g, "\\]");
+          .replace(/\]/g, "\\]")
+          .replace(/%/g, "\\%");
       }
     }
   },
