@@ -36,7 +36,6 @@ const RULES = [
       if (obj.kind === "string") {
         return `${children}`
           .replace(/\\/g, "\\\\")
-          .replace(/@/g, "\\@")
           .replace(/!/g, "\\!")
           .replace(/\[/g, "\\[")
           .replace(/\]/g, "\\]")
