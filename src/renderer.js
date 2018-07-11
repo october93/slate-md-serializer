@@ -150,7 +150,7 @@ const RULES = [
         case "mention":
           const username = obj.getIn(["data", "username"]) || "";
           const anon = obj.getIn(["data", "anonymous"]) || "";
-          return username && `${anon ? "!" : "@"}${username} `;
+          return username && `${anon ? "!" : "@"}${username}`;
       }
     }
   },
