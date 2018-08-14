@@ -18,10 +18,6 @@ ${domain}
 `;
 }
 
-function formatSoftBreak(children) {
-  return children.replace(/\n/g, "  \n");
-}
-
 /**
  * Rules to (de)serialize nodes.
  *
@@ -253,10 +249,12 @@ class Markdown {
    */
 
   serializeLeaves(leaves, escape = true) {
-    let leavesText = formatSoftBreak(leaves.text);
+    let leavesText = leaves.text;
     if (escape) {
       // escape markdown characters
-      leavesText = leavesText.replace(/([\\`*{}\[\]()#+\-.!_>])/gi, "\\$1");
+      leavesText = leavesText
+        .replace(/([\\`*{}\[\]()#+\-.!_>])/gi, "\\$1")
+        .replace(/\n/g, "  \n"); // format softBreaks
     }
     const string = new String({ text: leavesText });
     const text = this.serializeString(string);
