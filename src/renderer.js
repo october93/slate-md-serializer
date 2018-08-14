@@ -9,7 +9,9 @@ const String = new Record({
 });
 
 function formatLinkBar(img, url, title, desc, domain) {
-  return `%%%
+  return `
+
+%%%
 ${img ? `${url}\n${img}` : url}
 ${title}
 ${desc.replace(/\[(.*?)\]/g, "")}
@@ -120,7 +122,7 @@ const RULES = [
           const alt = obj.getIn(["data", "alt"]) || "";
           const src = encode(obj.getIn(["data", "src"]) || "");
           return `![${alt}](${src})`;
-          case "linkbar":
+        case "linkbar":
           const img = encode(obj.getIn(["data", "image"]) || "");
           const url = encode(obj.getIn(["data", "url"]) || "");
           const title = obj.getIn(["data", "title"]);
@@ -138,10 +140,10 @@ const RULES = [
         case "link":
           const href = encode(obj.getIn(["data", "href"]) || "");
           return href ? `[${children.trim()}](${href})` : children.trim();
-         case "mention":
-           const username = obj.getIn(["data", "username"]) || "";
-           const anon = obj.getIn(["data", "anonymous"]) || "";
-           return username && `${anon ? "!" : "@"}${username}`;
+        case "mention":
+          const username = obj.getIn(["data", "username"]) || "";
+          const anon = obj.getIn(["data", "anonymous"]) || "";
+          return username && `${anon ? "!" : "@"}${username}`;
       }
     }
   },
@@ -253,7 +255,7 @@ class Markdown {
     if (escape) {
       // escape markdown characters
       leavesText = leavesText
-        .replace(/([\\`*{}\[\]()#+\-.!_>])/gi, "\\$1")
+        .replace(/([\\`*{}\[\]()#+\-.!_>]@%)/gi, "\\$1")
         .replace(/\n/g, "  \n"); // format softBreaks
     }
     const string = new String({ text: leavesText });
