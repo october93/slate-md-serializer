@@ -4,7 +4,7 @@ import { Record } from "immutable";
 import { encode } from "./urls";
 
 const String = new Record({
-  kind: "string",
+  object: "string",
   text: ""
 });
 
@@ -23,7 +23,7 @@ function formatSoftBreak(children) {
 }
 
 /**
- * Rules to (de)serialize nodes.git pu
+ * Rules to (de)serialize nodes.
  *
  * @type {Object}
  */
@@ -33,25 +33,22 @@ let tableHeader = "";
 const RULES = [
   {
     serialize(obj, children) {
-      if (obj.kind === "string") {
-        return `${children}`
-          .replace(/\\/g, "\\\\")
-          .replace(/!/g, "\\!")
-          .replace(/\[/g, "\\[")
-          .replace(/\]/g, "\\]")
-          .replace(/%/g, "\\%");
+      if (obj.object === "string") {
+        return children;
       }
     }
   },
   {
     serialize(obj, children, document) {
-      if (obj.kind !== "block") return;
+      if (obj.object !== "block") return;
       let parent = document.getParent(obj.key);
 
       switch (obj.type) {
         case "table":
           tableHeader = "";
-          return children;
+
+          // trim removes trailing newline
+          return children.trim();
         case "table-head": {
           switch (obj.getIn(["data", "align"])) {
             case "left":
@@ -78,56 +75,56 @@ const RULES = [
         case "table-cell":
           return `| ${children} `;
         case "paragraph":
-          if (parent.type === "list-item") {
-            return formatSoftBreak(children);
-          } else {
-            return `\n${formatSoftBreak(children)}\n`;
-          }
+          return children;
         case "code":
-          return `\`\`\`\n${children}\n\`\`\`\n`;
+          return `\`\`\`\n${children}\n\`\`\``;
+        case "code-line":
+          return `${children}\n`;
         case "block-quote":
-          return `> ${children}\n`;
+          return `> ${children}`;
         case "todo-list":
         case "bulleted-list":
-        case "ordered-list":
+        case "ordered-list": {
+          // root list
           if (parent === document) {
-            return `\n${children}`;
+            return children;
           }
-          return `\n${children.replace(/^/gm, "   ")}`;
+
+          // nested list
+          return `\n${children.replace(/\n+$/gm, "").replace(/^/gm, "   ")}`;
+        }
         case "list-item": {
           switch (parent.type) {
             case "ordered-list":
-              return `1. ${formatSoftBreak(children)}\n`;
+              return `1. ${children}\n`;
             case "todo-list":
               let checked = obj.getIn(["data", "checked"]);
               let box = checked ? "[x]" : "[ ]";
-              return `${box} ${formatSoftBreak(children)}\n`;
+              return `${box} ${children}\n`;
             default:
             case "bulleted-list":
-              return `* ${formatSoftBreak(children)}\n`;
+              return `* ${children}\n`;
           }
         }
         case "heading1":
-          return `# ${formatSoftBreak(children)}`;
+          return `# ${children}\n`;
         case "heading2":
-          return `## ${children}`;
+          return `\n## ${children}\n`;
         case "heading3":
-          return `### ${children}`;
+          return `\n### ${children}\n`;
         case "heading4":
-          return `#### ${children}`;
+          return `\n#### ${children}\n`;
         case "heading5":
-          return `##### ${children}`;
+          return `\n##### ${children}\n`;
         case "heading6":
-          return `###### ${children}`;
-        case "heading6":
-          return `###### ${children}`;
+          return `\n###### ${children}\n`;
         case "horizontal-rule":
-          return `---\n`;
+          return `---`;
         case "image":
-          const alt = obj.getIn(["data", "alt"]);
+          const alt = obj.getIn(["data", "alt"]) || "";
           const src = encode(obj.getIn(["data", "src"]) || "");
-          return `![${alt}](${src})\n`;
-        case "linkbar":
+          return `![${alt}](${src})`;
+          case "linkbar":
           const img = encode(obj.getIn(["data", "image"]) || "");
           const url = encode(obj.getIn(["data", "url"]) || "");
           const title = obj.getIn(["data", "title"]);
@@ -140,33 +137,31 @@ const RULES = [
   },
   {
     serialize(obj, children) {
-      if (obj.kind !== "inline") return;
+      if (obj.object !== "inline") return;
       switch (obj.type) {
         case "link":
           const href = encode(obj.getIn(["data", "href"]) || "");
-          return `[${children.trim()}](${href})`;
-        case "code-line":
-          return `\`${children}\``;
-        case "mention":
-          const username = obj.getIn(["data", "username"]) || "";
-          const anon = obj.getIn(["data", "anonymous"]) || "";
-          return username && `${anon ? "!" : "@"}${username}`;
+          return href ? `[${children.trim()}](${href})` : children.trim();
+         case "mention":
+           const username = obj.getIn(["data", "username"]) || "";
+           const anon = obj.getIn(["data", "anonymous"]) || "";
+           return username && `${anon ? "!" : "@"}${username}`;
       }
     }
   },
   // Add a new rule that handles marks...
   {
     serialize(obj, children) {
-      if (obj.kind !== "mark") return;
+      if (obj.object !== "mark") return;
       switch (obj.type) {
         case "bold":
           return `**${children}**`;
         case "italic":
-          return `*${children}*`;
+          return `_${children}_`;
         case "code":
           return `\`${children}\``;
         case "inserted":
-          return `__${children}__`;
+          return `++${children}++`;
         case "deleted":
           return `~~${children}~~`;
       }
@@ -224,9 +219,18 @@ class Markdown {
    */
 
   serializeNode(node, document) {
-    if (node.kind == "text") {
+    if (node.object == "text") {
       const leaves = node.getLeaves();
-      return leaves.map(this.serializeLeaves);
+      const inCodeBlock = !!document.getClosest(
+        node.key,
+        n => n.type === "code"
+      );
+
+      return leaves.map(leave => {
+        const inCodeMark = !!leave.marks.filter(mark => mark.type === "code")
+          .size;
+        return this.serializeLeaves(leave, !inCodeBlock && !inCodeMark);
+      });
     }
 
     let children = node.nodes.map(node => this.serializeNode(node, document));
@@ -248,8 +252,13 @@ class Markdown {
    * @return {String}
    */
 
-  serializeLeaves(leaves) {
-    const string = new String({ text: leaves.text });
+  serializeLeaves(leaves, escape = true) {
+    let leavesText = formatSoftBreak(leaves.text);
+    if (escape) {
+      // escape markdown characters
+      leavesText = leavesText.replace(/([\\`*{}\[\]()#+\-.!_>])/gi, "\\$1");
+    }
+    const string = new String({ text: leavesText });
     const text = this.serializeString(string);
 
     return leaves.marks.reduce((children, mark) => {
