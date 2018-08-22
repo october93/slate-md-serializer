@@ -51,14 +51,14 @@ var block = {
   newline: /^\n+/,
   code: /^( {4}[^\n]+\n*)+/,
   fences: noop,
-  hr: /^( *[-*_]){3,} *(?:\n+|$)/,
-  heading: /^ *(#{1,6}) *([^\n]+?) *#* *(?:\n+|$)/,
+  hr: /^( *[-*_]){3,} *(?:\n|$)/,
+  heading: /^ *(#{1,6}) *([^\n]+?) *#* *(?:\n|$)/,
   nptable: noop,
-  lheading: /^([^\n]+)\n *(=|-){2,} *(?:\n+|$)/,
-  blockquote: /^( *>[^\n]+(\n(?!def)[^\n]+)*\n*)+/,
-  list: /^( *)(bull) [\s\S]+?(?:hr|def|\n{2,}(?! )(?!\1bull )\n*|\s*$)/,
-  def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +["(]([^\n]+)[")])? *(?:\n+|$)/,
-  paragraph: /^((?:[^\n]+\n?(?!hr|heading|lheading|blockquote|def))+)\n*/,
+  lheading: /^([^\n]+)\n *(=|-){2,} *(?:\n|$)/,
+  blockquote: /^( *>[^\n]+(\n(?!def)[^\n])*(?:\n|$))+/,
+  list: /^( *)(bull) [\s\S]+?(?:hr|def|\n(?! )(?!\1bull )\n|\s*$)/,
+  def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +["(]([^\n]+)[")])? *(?:\n|$)/,
+  paragraph: /^((?:[^\n]+(?!hr|heading|lheading|blockquote|def))+)(?:\n|$)/,
   text: /^[^\n]+/
 };
 
@@ -92,9 +92,9 @@ block.normal = assign({}, block);
  */
 
 block.gfm = assign({}, block.normal, {
-  fences: /^ *(`{3,}|~{3,})[ \.]*(\S+)? *\n([\s\S]+?)\s*\1 *(?:\n+|$)/,
+  fences: /^ *(`{3,}|~{3,})[ \.]*(\S+)? *\n([\s\S]+?)\s*\1 *(?:\n|$)/,
   paragraph: /^/,
-  heading: /^ *(#{1,6}) +([^\n]+?) *#* *(?:\n+|$)/
+  heading: /^ *(#{1,6}) +([^\n]+?) *#* *(?:\n{1,2}|$)/
 });
 
 block.gfm.paragraph = replace(block.paragraph)(
@@ -111,8 +111,8 @@ block.gfm.paragraph = replace(block.paragraph)(
  */
 
 block.tables = assign({}, block.gfm, {
-  nptable: /^ *(\S.*\|.*)\n *([-:]+ *\|[-| :]*)\n((?:.*\|.*(?:\n|$))*)\n*/,
-  table: /^ *\|(.+)\n *\|( *[-:]+[-| :]*)\n((?: *\|.*(?:\n|$))*)\n*/
+  nptable: /^ *(\S.*\|.*)\n *([-:]+ *\|[-| :]*)\n((?:.*\|.*(?:\n|$))*)/,
+  table: /^ *\|(.+)\n *\|( *[-:]+[-| :]*)\n((?: *\|.*(?:\n|$))*)/
 });
 
 /**
@@ -179,15 +179,21 @@ Lexer.prototype.token = function(src, top, bq) {
   var l;
 
   src = src.replace(/^ +$/gm, "");
+  src = src.replace(/^\n/, "");
 
   while (src) {
     // newline
     if ((cap = this.rules.newline.exec(src))) {
       src = src.substring(cap[0].length);
-      if (cap[0].length > 1) {
-        this.tokens.push({
-          type: "space"
-        });
+      const newlines = cap[0].length;
+
+      if (top) {
+        for (let i = 0; i < newlines; i++) {
+          this.tokens.push({
+            type: "paragraph",
+            text: ""
+          });
+        }
       }
     }
 
@@ -216,6 +222,12 @@ Lexer.prototype.token = function(src, top, bq) {
     // heading
     if ((cap = this.rules.heading.exec(src))) {
       src = src.substring(cap[0].length);
+
+      const last = this.tokens[this.tokens.length - 1];
+      if (last && last.type === "paragraph" && last.text === "") {
+        this.tokens.splice(-1, 1);
+      }
+
       this.tokens.push({
         type: "heading",
         depth: cap[1].length,
@@ -423,12 +435,17 @@ Lexer.prototype.token = function(src, top, bq) {
     // top-level paragraph
     if (top && (cap = this.rules.paragraph.exec(src))) {
       src = src.substring(cap[0].length);
+      const endsWithNewline = cap[1].charAt(cap[1].length - 1) === "\n";
       this.tokens.push({
         type: "paragraph",
-        text: cap[1].charAt(cap[1].length - 1) === "\n"
-          ? cap[1].slice(0, -1)
-          : cap[1]
+        text: endsWithNewline ? cap[1].slice(0, -1) : cap[1]
       });
+      if (endsWithNewline) {
+        this.tokens.push({
+          type: "paragraph",
+          text: ""
+        });
+      }
       continue;
     }
 
@@ -569,7 +586,7 @@ InlineLexer.prototype.parse = function(src) {
     if ((cap = this.rules.escape.exec(src))) {
       src = src.substring(cap[0].length);
       out.push({
-        kind: "text",
+        object: "text",
         leaves: [
           {
             text: cap[1]
@@ -599,7 +616,7 @@ InlineLexer.prototype.parse = function(src) {
       link = this.links[link.toLowerCase()];
       if (!link || !link.href) {
         out.push({
-          kind: "text",
+          object: "text",
           leaves: [
             {
               text: cap[0].charAt(0)
@@ -699,17 +716,17 @@ Renderer.prototype.groupTextInLeaves = function(childNode) {
   return node.reduce((acc, current) => {
     let accLast = acc.length - 1;
     let lastIsText =
-      accLast >= 0 && acc[accLast] && acc[accLast]["kind"] === "text";
+      accLast >= 0 && acc[accLast] && acc[accLast]["object"] === "text";
 
-    if (current instanceof TextNode) {
+    if (current.text) {
       if (lastIsText) {
-        // If the previous item was a text kind, push the current text to it's range
+        // If the previous item was a text object, push the current text to it's range
         acc[accLast].leaves.push(current);
         return acc;
       } else {
-        // Else, create a new text kind
+        // Else, create a new text object
         acc.push({
-          kind: "text",
+          object: "text",
           leaves: [current]
         });
         return acc;
@@ -731,7 +748,7 @@ Renderer.prototype.code = function(childNode, lang) {
   }
 
   return {
-    kind: "block",
+    object: "block",
     type: "code",
     data,
     nodes: this.groupTextInLeaves(childNode)
@@ -740,7 +757,7 @@ Renderer.prototype.code = function(childNode, lang) {
 
 Renderer.prototype.blockquote = function(childNode) {
   return {
-    kind: "block",
+    object: "block",
     type: "block-quote",
     nodes: this.groupTextInLeaves(childNode)
   };
@@ -748,7 +765,7 @@ Renderer.prototype.blockquote = function(childNode) {
 
 Renderer.prototype.heading = function(childNode, level) {
   return {
-    kind: "block",
+    object: "block",
     type: "heading" + level,
     nodes: this.groupTextInLeaves(childNode)
   };
@@ -756,25 +773,15 @@ Renderer.prototype.heading = function(childNode, level) {
 
 Renderer.prototype.hr = function() {
   return {
-    kind: "block",
+    object: "block",
     type: "horizontal-rule",
-    nodes: [
-      {
-        kind: "text",
-        leaves: [
-          {
-            text: ""
-          }
-        ]
-      }
-    ],
     isVoid: true
   };
 };
 
 Renderer.prototype.list = function(childNode, style) {
   return {
-    kind: "block",
+    object: "block",
     type: `${style}-list`,
     nodes: childNode
   };
@@ -787,7 +794,7 @@ Renderer.prototype.listitem = function(childNode, flags = {}) {
   }
 
   return {
-    kind: "block",
+    object: "block",
     type: "list-item",
     data,
     nodes: this.groupTextInLeaves(childNode)
@@ -796,7 +803,7 @@ Renderer.prototype.listitem = function(childNode, flags = {}) {
 
 Renderer.prototype.paragraph = function(childNode) {
   return {
-    kind: "block",
+    object: "block",
     type: "paragraph",
     nodes: this.groupTextInLeaves(childNode)
   };
@@ -804,7 +811,7 @@ Renderer.prototype.paragraph = function(childNode) {
 
 Renderer.prototype.table = function(childNode) {
   return {
-    kind: "block",
+    object: "block",
     type: "table",
     nodes: childNode
   };
@@ -812,7 +819,7 @@ Renderer.prototype.table = function(childNode) {
 
 Renderer.prototype.tablerow = function(childNode) {
   return {
-    kind: "block",
+    object: "block",
     type: "table-row",
     nodes: childNode
   };
@@ -822,7 +829,7 @@ Renderer.prototype.tablecell = function(childNode, flags) {
   const align = flags.align;
 
   return {
-    kind: "block",
+    object: "block",
     data: { align },
     type: flags.header ? "table-head" : "table-cell",
     nodes: this.groupTextInLeaves(childNode)
@@ -853,11 +860,16 @@ Renderer.prototype.em = function(childNode) {
 };
 
 Renderer.prototype.codespan = function(text) {
-  return new TextNode(text, { type: "code" });
+  return {
+    text,
+    marks: [{ type: "code" }]
+  };
 };
 
 Renderer.prototype.br = function() {
-  return new TextNode("");
+  return {
+    text: " "
+  };
 };
 
 Renderer.prototype.del = function(childNode) {
@@ -890,7 +902,7 @@ Renderer.prototype.link = function(href, title, childNode) {
     data.title = title;
   }
   return {
-    kind: "inline",
+    object: "inline",
     type: "link",
     nodes: this.groupTextInLeaves(childNode),
     data: data
@@ -910,11 +922,11 @@ Renderer.prototype.image = function(href, title, alt) {
   }
 
   return {
-    kind: "block",
+    object: "block",
     type: "image",
     nodes: [
       {
-        kind: "text",
+        object: "text",
         leaves: [
           {
             text: ""
@@ -928,16 +940,10 @@ Renderer.prototype.image = function(href, title, alt) {
 };
 
 Renderer.prototype.text = function(childNode) {
-  return new TextNode(childNode);
+  return {
+    text: childNode
+  };
 };
-
-// Auxiliary object constructors:
-function TextNode(text, marks) {
-  this.text = text;
-  if (marks) {
-    this.marks = [marks];
-  }
-}
 
 /**
  * Parsing & Compiling
@@ -1015,7 +1021,7 @@ Parser.prototype.tok = function() {
   switch (this.token.type) {
     case "space": {
       return {
-        kind: "text",
+        object: "text",
         leaves: [
           {
             text: ""
@@ -1135,23 +1141,54 @@ function replace(regex, options) {
 const MarkdownParser = {
   parse(src, options) {
     options = assign({}, defaults, options);
+    let fragment;
+
     try {
-      var fragment = Parser.parse(Lexer.parse(src, options), options);
-    } catch (e) {
+      fragment = Parser.parse(Lexer.parse(src, options), options);
+
+      if (!fragment.length) {
+        fragment = [
+          {
+            object: "block",
+            type: "paragraph",
+            isVoid: false,
+            data: {},
+            nodes: [
+              {
+                object: "text",
+                leaves: [
+                  {
+                    object: "leaf",
+                    text: "",
+                    marks: []
+                  }
+                ]
+              }
+            ]
+          }
+        ];
+      }
+    } catch (err) {
       if (options.silent) {
         fragment = [
           {
-            kind: "block",
+            object: "block",
             type: "paragraph",
+            isVoid: false,
+            data: {},
             nodes: [
               {
-                kind: "text",
+                object: "text",
                 leaves: [
                   {
-                    text: "An error occured:"
+                    object: "leaf",
+                    text: "An error occured:",
+                    marks: []
                   },
                   {
-                    text: e.message
+                    object: "leaf",
+                    text: e.message,
+                    marks: []
                   }
                 ]
               }
@@ -1159,11 +1196,11 @@ const MarkdownParser = {
           }
         ];
       } else {
-        throw e;
+        throw err;
       }
     }
-    let mainNode = { nodes: fragment };
-    return mainNode;
+
+    return { nodes: fragment };
   }
 };
 
