@@ -151,6 +151,8 @@ const RULES = [
   {
     serialize(obj, children) {
       if (obj.object !== "mark") return;
+      if (!children) return;
+
       switch (obj.type) {
         case "bold":
           return `**${children}**`;
@@ -255,7 +257,7 @@ class Markdown {
     if (escape) {
       // escape markdown characters
       leavesText = leavesText
-        .replace(/([\\`*{}\[\]()#+\-.!_>@%])/gi, "\\$1")
+        .replace(/([\\`*{}\[\]()#+\-.!_>%])/gi, "\\$1")
         .replace(/\n/g, "  \n"); // format softBreaks
     }
     const string = new String({ text: leavesText });
