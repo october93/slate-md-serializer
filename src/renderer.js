@@ -2,6 +2,7 @@ import parser from "./parser";
 import { Value } from "slate";
 import { Record } from "immutable";
 import { encode } from "./urls";
+import { escapeMarkdownChars } from "./utils";
 
 const String = new Record({
   object: "string",
@@ -136,7 +137,10 @@ const RULES = [
   {
     serialize(obj, children) {
       if (obj.object !== "inline") return;
+
       switch (obj.type) {
+        case "hashtag":
+          return children;
         case "link":
           const href = encode(obj.getIn(["data", "href"]) || "");
           return href ? `[${children.trim()}](${href})` : children.trim();
@@ -256,9 +260,7 @@ class Markdown {
     let leavesText = leaves.text;
     if (escape) {
       // escape markdown characters
-      leavesText = leavesText
-        .replace(/([\\`*{}\[\]()#+\-._>%])/gi, "\\$1")
-        .replace(/\n/g, "  \n"); // format softBreaks
+      leavesText = escapeMarkdownChars(leavesText);
     }
     const string = new String({ text: leavesText });
     const text = this.serializeString(string);
